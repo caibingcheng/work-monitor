@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "work-monitor"
+authors = [
+    {name = "caibingcheng", email = "jack_cbc@163.com"},
+]
+description = "monitor work environment by camera"
+readme = "README.md"
+requires-python = ">=3.7"
+version = "0.0.5"
+dependencies = [
+    "requests",
+    "opencv-python",
+]
+
+[project.scripts]
+work-monitor = "monitor.app:main"
