@@ -6,16 +6,29 @@ global command
 command = {}
 
 
-def add_command(name):
+def add_command(name, help=""):
     def decorator(func):
         global command
-        command[name] = func
+        command[name] = {
+            "command": func,
+            "help": help,
+        }
         return func
 
     return decorator
 
 
-@add_command("server")
+@add_command("help", "Print help")
+def help():
+    help_str = """Usage: python3 -m monitor <command> [arguments]
+Commands:
+"""
+    for name, value in command.items():
+        help_str += f"    {name}: {value['help']}\n"
+    print(help_str)
+
+
+@add_command("server", "Start server [video_path], default video_path is empty")
 def server(*args):
     log_info("Starting")
     policy = config["policy"]
@@ -40,7 +53,7 @@ def server(*args):
     log_info("Stopped")
 
 
-@add_command("stop")
+@add_command("stop", "Client command, stop server")
 def stop():
     from monitor.server import send_msg_to_server
 
@@ -48,7 +61,7 @@ def stop():
     log_info("Client received", response)
 
 
-@add_command("restart")
+@add_command("restart", "Client command, restart server")
 def restart():
     from monitor.server import send_msg_to_server
 
@@ -56,7 +69,7 @@ def restart():
     log_info("Client received", response)
 
 
-@add_command("get_config")
+@add_command("get_config", "Client command, get config")
 def get_config():
     from monitor.server import send_msg_to_server
 
@@ -64,7 +77,7 @@ def get_config():
     log_info("Client received", response)
 
 
-@add_command("set_config")
+@add_command("set_config", "Client command, set config")
 def set_config(*args):
     from monitor.server import send_msg_to_server
 
