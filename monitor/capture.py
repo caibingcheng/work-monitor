@@ -33,9 +33,25 @@ def capture(video_path_for_debug=""):
             else:
                 log_error(f"Open camera failed, retrying {max_retry}")
             continue
-        capture_date = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        log_info(f"Capturing {capture_date}")
+        capture_date = datetime.datetime.now()
+        # 2021/01/01 00:00:00.000
+        frame_date = capture_date.strftime("%Y/%m/%d %H:%M:%S.%f")
+        frame_date = frame_date[:-3]
+        log_info(f"Captured {frame_date}")
+        cv2.putText(
+            frame,
+            frame_date,
+            (10, 50),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            # yellow
+            (0, 255, 255),
+            2,
+            cv2.LINE_AA,
+        )
         # set jpeg quality
+        capture_date = capture_date.strftime("%Y%m%d%H%M%Ss%f")
+        capture_date = capture_date[:-3]
         cv2.imwrite(
             f"{config['frames_dir']}/{capture_date}.jpeg",
             frame,

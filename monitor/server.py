@@ -55,11 +55,20 @@ def set_config_server(*args):
     return config_str
 
 
+_should_stop = False
+
+
 @add_server_command("stop")
 def stop_server():
+    global _should_stop
+    _should_stop = True
     log_info("Stopping")
-    this_pid = os.getpid()
-    os.system(f"kill {this_pid}")
+    exit(0)
+
+
+def should_stop():
+    global _should_stop
+    return _should_stop
 
 
 @add_server_command("restart")

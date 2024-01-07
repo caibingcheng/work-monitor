@@ -23,15 +23,21 @@ def server(*args):
     # str to function
     policy = globals()[policy]
 
-    from monitor.server import start_server
+    from monitor.server import start_server, should_stop
 
     start_server()
     video_path_for_debug = "" if len(args) == 0 else args[0]
-    while True:
+    while not should_stop():
         try:
             policy(video_path_for_debug)
-        except:
+        except Exception as e:
+            log_error(e)
+            # backtrace
+            import traceback
+
+            traceback.print_exc()
             stop()
+    log_info("Stopped")
 
 
 @add_command("stop")
