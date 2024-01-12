@@ -38,6 +38,10 @@ def load_frames(frames_dir):
     return frames, frames_date_range
 
 
+global generated_videos
+generated_videos = []
+
+
 def generate_video_from_frames(frames, frames_date_range, video_dir, fps):
     base_frame = cv2.imread(frames[0])
     height, width, _ = base_frame.shape
@@ -59,6 +63,9 @@ def generate_video_from_frames(frames, frames_date_range, video_dir, fps):
             video.write(frame)
     video.release()
     log_info(f"Video generated {output_path}")
+
+    global generated_videos
+    generated_videos.append(frames_date_range)
 
     global video_in_progress
     video_in_progress = False

@@ -6,6 +6,9 @@ import time
 from monitor.config import config
 from monitor.log import log_info, log_error
 
+global captured_frames
+captured_frames = 0
+
 
 def capture(video_path_for_debug=""):
     max_retry = 10
@@ -57,6 +60,8 @@ def capture(video_path_for_debug=""):
             frame,
             [int(cv2.IMWRITE_JPEG_QUALITY), config["quality"]],
         )
+        global captured_frames
+        captured_frames += 1
 
         cap.release()
         break

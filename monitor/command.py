@@ -1,17 +1,19 @@
 from monitor.log import log_info, log_error
 from monitor.config import config
 from monitor.policy import *
+from monitor.server import server_command
 
 global command
 command = {}
 
 
-def add_command(name, help=""):
+def add_command(name, help="", server=False):
     def decorator(func):
         global command
         command[name] = {
             "command": func,
             "help": help,
+            "server": server,
         }
         return func
 
@@ -49,37 +51,23 @@ def server(*args):
             import traceback
 
             traceback.print_exc()
-            stop()
+            client_send_msg_to_server("stop")
     log_info("Stopped")
+    exit(0)
 
 
-@add_command("stop", "Client command, stop server")
-def stop():
+def client_send_msg_to_server(msg, *args):
     from monitor.server import send_msg_to_server
 
-    response = send_msg_to_server("stop")
-    log_info("Client received", response)
+    send_msg = " ".join([msg, *args])
+    response = send_msg_to_server(send_msg)
+
+    from monitor.log import write_log
+
+    write_log("[INFO ]", "Client received", response)
+    if response:
+        print(response)
 
 
-@add_command("restart", "Client command, restart server")
-def restart():
-    from monitor.server import send_msg_to_server
-
-    response = send_msg_to_server("restart")
-    log_info("Client received", response)
-
-
-@add_command("get_config", "Client command, get config")
-def get_config():
-    from monitor.server import send_msg_to_server
-
-    response = send_msg_to_server("get_config")
-    log_info("Client received", response)
-
-
-@add_command("set_config", "Client command, set config")
-def set_config(*args):
-    from monitor.server import send_msg_to_server
-
-    response = send_msg_to_server("set_config " + " ".join(args))
-    log_info("Client received", response)
+for name, value in server_command.items():
+    add_command(name, value["help"], server=True)(client_send_msg_to_server)

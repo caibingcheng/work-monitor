@@ -1,6 +1,7 @@
 import sys
 import pathlib
 import datetime
+import os
 
 from monitor.config import config
 
@@ -48,15 +49,16 @@ def write_log(tag, *args, **kwargs):
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     caller_file = pathlib.Path(caller_file).name
     caller_info = f"{caller_file}:{caller_line}"
-    prefix_info = f"{current_time} {tag} {caller_info}"
+    prefix_info = f"{current_time} [{os.getpid()}] {tag} {caller_info}"
+    message = f"{prefix_info} {' '.join([str(arg) for arg in args])} {' '.join([f'{key}={value}' for key, value in kwargs.items()])}"
     with open(latest_log_file, "a") as f:
-        print(prefix_info, *args, **kwargs, file=f)
-        print(prefix_info, *args, **kwargs)
+        print(message, file=f)
+    return message
 
 
 def log_info(*args, **kwargs):
-    write_log("[INFO ]", *args, **kwargs)
+    print(write_log("[INFO ]", *args, **kwargs))
 
 
 def log_error(*args, **kwargs):
-    write_log("[ERROR]", *args, **kwargs)
+    print(write_log("[ERROR]", *args, **kwargs))

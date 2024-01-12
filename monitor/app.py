@@ -8,7 +8,10 @@ def main():
     if command_section not in command:
         raise ValueError(f"Section {command_section} not found")
 
-    command[command_section]['command'](*command_argument)
+    if command[command_section]["server"]:
+        command[command_section]["command"](command_section, *command_argument)
+    else:
+        command[command_section]["command"](*command_argument)
 
 
 if __name__ == "__main__":

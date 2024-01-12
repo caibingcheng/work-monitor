@@ -13,10 +13,13 @@ global server_command
 server_command = {}
 
 
-def add_server_command(name):
+def add_server_command(name, help=""):
     def decorator(func):
         global server_command
-        server_command[name] = func
+        server_command[name] = {
+            "command": func,
+            "help": help,
+        }
         return func
 
     return decorator
@@ -25,18 +28,20 @@ def add_server_command(name):
 def get_config_string(config):
     config_copy = config.copy()
     config_copy = stringify_config(config_copy)
-    config_str = json.dumps(config_copy, indent=4).encode("utf-8")
+    config_str = json.dumps(config_copy, indent=4)
     log_info(f"Sending config {config_str}")
     return config_str
 
 
-@add_server_command("get_config")
+@add_server_command("get_config", "Get config")
 def get_config_server():
+    log_info("Sending config")
     return get_config_string(config)
 
 
-@add_server_command("set_config")
+@add_server_command("set_config", "Set config [key1] [key2] ... [value]")
 def set_config_server(*args):
+    log_info("Setting config")
     if len(args) < 2:
         raise Exception("Not enough arguments")
     current = config.copy()
@@ -49,7 +54,7 @@ def set_config_server(*args):
         current = current[key]
     current[keys[-1]] = value
     current_header = initialize_config(current_header, force=True)
-    config_str = json.dumps(current_header, indent=4).encode("utf-8")
+    config_str = json.dumps(current_header, indent=4)
     log_info(f"Sending config {config_str}")
     update_config(config, current_header)
     return config_str
@@ -58,11 +63,11 @@ def set_config_server(*args):
 _should_stop = False
 
 
-@add_server_command("stop")
+@add_server_command("stop", "Stop server")
 def stop_server():
+    log_info("Stopping")
     global _should_stop
     _should_stop = True
-    log_info("Stopping")
     exit(0)
 
 
@@ -71,7 +76,7 @@ def should_stop():
     return _should_stop
 
 
-@add_server_command("restart")
+@add_server_command("restart", "Restart server")
 def restart_server():
     log_info("Restarting")
     import sys
@@ -81,6 +86,17 @@ def restart_server():
 
     os.system(this_command + " &")
     os.system(f"kill {this_pid}")
+
+
+@add_server_command("status", "Get status")
+def status_server():
+    log_info("Getting status")
+    from monitor.capture import captured_frames
+    from monitor.video import generated_videos
+
+    return (
+        f"captured_frames: {captured_frames} generated_videos: {len(generated_videos)}"
+    )
 
 
 def start_server():
@@ -121,7 +137,10 @@ def start_server():
                     log_error(f"Unknown command {msg}")
                     clientsocket.send("failed".encode("utf-8"))
                 else:
-                    clientsocket.send(server_command[msg](*argument))
+                    response = server_command[msg]["command"](*argument)
+                    if isinstance(response, str):
+                        response = response.encode("utf-8")
+                    clientsocket.send(response)
             except Exception as e:
                 # show backtrace
                 log_error("Server failed", e)
