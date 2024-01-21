@@ -27,7 +27,7 @@ Commands:
 """
     for name, value in command.items():
         help_str += f"    {name}: {value['help']}\n"
-    print(help_str)
+    print(help_str, end="")
 
 
 @add_command("server", "Start server [video_path], default video_path is empty")
@@ -60,13 +60,16 @@ def client_send_msg_to_server(msg, *args):
     from monitor.server import send_msg_to_server
 
     send_msg = " ".join([msg, *args])
-    response = send_msg_to_server(send_msg)
+    try:
+        response = send_msg_to_server(send_msg)
 
-    from monitor.log import write_log
+        from monitor.log import write_info
 
-    write_log("[INFO ]", "Client received", response)
-    if response:
-        print(response)
+        write_info("Client received", response)
+        if response:
+            print(response)
+    except Exception as e:
+        print("Server is not running")
 
 
 for name, value in server_command.items():

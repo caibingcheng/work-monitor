@@ -10,6 +10,10 @@ global captured_frames
 captured_frames = 0
 
 
+global capture_pattern
+captured_pattern = "%Y%m%d%H%M%Ss%f"
+
+
 def capture(video_path_for_debug=""):
     max_retry = 10
 
@@ -52,12 +56,13 @@ def capture(video_path_for_debug=""):
             2,
             cv2.LINE_AA,
         )
-        # set jpeg quality
-        capture_date = capture_date.strftime("%Y%m%d%H%M%Ss%f")
+        global captured_pattern
+        capture_date = capture_date.strftime(captured_pattern)
         capture_date = capture_date[:-3]
         cv2.imwrite(
             f"{config['frames_dir']}/{capture_date}.jpeg",
             frame,
+            # set jpeg quality
             [int(cv2.IMWRITE_JPEG_QUALITY), config["quality"]],
         )
         global captured_frames

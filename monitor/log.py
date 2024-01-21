@@ -56,9 +56,17 @@ def write_log(tag, *args, **kwargs):
     return message
 
 
+def write_error(*args, **kwargs):
+    return write_log("[ERROR]", *args, **kwargs)
+
+
+def write_info(*args, **kwargs):
+    return write_log("[INFO ]", *args, **kwargs)
+
+
 def log_info(*args, **kwargs):
-    print(write_log("[INFO ]", *args, **kwargs))
+    print(write_info(*args, **kwargs))
 
 
 def log_error(*args, **kwargs):
-    print(write_log("[ERROR]", *args, **kwargs))
+    print(write_error(*args, **kwargs))

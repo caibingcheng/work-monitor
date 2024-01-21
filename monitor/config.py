@@ -11,6 +11,7 @@ raw_config = {
     "fps": 60,
     "quality": 75,
     "frames_save": False,
+    "videos_rotate": 10,
     "policy": "easy_policy",
     "easy_policy": {"frames_interval": 10, "frames_per_video": 1000},
     "server": {
@@ -100,23 +101,52 @@ def verify_config(config):
         raise Exception("Config keys not match", raw_config_keys, config_keys)
 
 
+def rebase_config(config, other_config):
+    for key, value in other_config.items():
+        if isinstance(value, dict):
+            rebase_config(config[key], value)
+        elif key not in config:
+            config[key] = value
+        else:
+            # do nothing
+            pass
+
+    def remove_unused_config(config, other_config):
+        delete_keys = []
+        for key, value in config.items():
+            if isinstance(value, dict):
+                remove_unused_config(value, other_config[key])
+            elif key not in other_config:
+                delete_keys.append(key)
+        for key in delete_keys:
+            del config[key]
+        return config
+
+    return remove_unused_config(config, other_config)
+
+
 def update_config(config, other_config):
     config.update(other_config)
     return config
 
 
+import sys
+
+is_server = sys.argv[1] == "server"
+
 try:
     config = initialize_config(config)
-    verify_config(config)
+    if is_server:
+        verify_config(config)
 except Exception as e:
     print(e)
-    choise = input("Reset config? (y/n)")
+    choise = input("Rebase config? (y/n)")
     if choise == "y":
-        print("Resetting config")
-        config = raw_config
+        rebase_config(config, raw_config)
         config = initialize_config(config, force=True)
     else:
         print("Using raw config")
         config = raw_config
 config = preprocess_config(config)
-verify_config(config)
+if is_server:
+    verify_config(config)

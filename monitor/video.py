@@ -46,12 +46,13 @@ def generate_video_from_frames(frames, frames_date_range, video_dir, fps):
     base_frame = cv2.imread(frames[0])
     height, width, _ = base_frame.shape
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    output_path = pathlib.Path(video_dir) / f"{frames_date_range}.mp4"
+    output_path = pathlib.Path(video_dir) / f"work_monitor_{frames_date_range}.mp4"
     if output_path.exists():
         log_info(f"Removing existing video {output_path}")
         output_path.unlink()
     log_info(f"Generating video {output_path}")
     video = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
+    video.metadata["author"] = "work-monitor"
 
     skip_write = False
     frame_save = config["frames_save"]
@@ -63,6 +64,21 @@ def generate_video_from_frames(frames, frames_date_range, video_dir, fps):
             video.write(frame)
     video.release()
     log_info(f"Video generated {output_path}")
+
+    from monitor.capture import captured_pattern
+
+    videos_rotate = config["videos_rotate"]
+    videos = sorted(pathlib.Path(video_dir).glob("work_monitor_*.mp4"))
+    videos_and_dates = []
+    for video in videos:
+        video_date = video.stem.split("_")[-1]
+        video_date = datetime.datetime.strptime(video_date, captured_pattern)
+        videos_and_dates.append((video, video_date))
+    sorted_videos_and_dates = sorted(videos_and_dates, key=lambda x: x[1])
+    if len(sorted_videos_and_dates) > videos_rotate:
+        for video, _ in sorted_videos_and_dates[:-videos_rotate]:
+            log_info(f"Removing old video {video}")
+            video.unlink()
 
     global generated_videos
     generated_videos.append(frames_date_range)

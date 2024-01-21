@@ -43,15 +43,20 @@ def get_config_server():
 def set_config_server(*args):
     log_info("Setting config")
     if len(args) < 2:
-        raise Exception("Not enough arguments")
+        log_error("No key or value")
+        return "No key or value"
     current = config.copy()
     current_header = current
     keys = args[:-1]
     value = args[-1]
     for key in keys[:-1]:
         if key not in current or not isinstance(current[key], dict):
-            raise Exception(f"Key {key} not found")
+            log_error(f"Key {key} not found")
+            return f"Key {key} not found"
         current = current[key]
+    if keys[-1] not in current:
+        log_error(f"Key {keys[-1]} not found")
+        return f"Key {keys[-1]} not found"
     current[keys[-1]] = value
     current_header = initialize_config(current_header, force=True)
     config_str = json.dumps(current_header, indent=4)
@@ -92,11 +97,11 @@ def restart_server():
 def status_server():
     log_info("Getting status")
     from monitor.capture import captured_frames
-    from monitor.video import generated_videos
+    from monitor.video import generated_videos, all_frames
 
-    return (
-        f"captured_frames: {captured_frames} generated_videos: {len(generated_videos)}"
-    )
+    total_frames = len(all_frames())
+
+    return f"captured:{captured_frames} total:{total_frames} generated:{len(generated_videos)}"
 
 
 def start_server():
@@ -164,13 +169,15 @@ def send_msg_to_server(msg):
     try:
         # connection to hostname on the port.
         client.connect((host, port))
-    except Exception as e:
-        log_error("Client failed to connect to server", e)
-        exit(1)
 
-    # Receive no more than 1024 bytes
-    client.send(msg.encode("utf-8"))
-    response = client.recv(1024).decode("utf-8")
-    client.close()
+        # Receive no more than 1024 bytes
+        client.send(msg.encode("utf-8"))
+        response = client.recv(1024).decode("utf-8")
+        client.close()
+    except Exception as e:
+        from monitor.log import write_error
+
+        write_error("Client failed to connect to server", e)
+        raise e
 
     return response
