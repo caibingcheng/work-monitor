@@ -121,7 +121,12 @@ def start_server():
         log_info("Server started")
         while True:
             # establish a connection
-            clientsocket, addr = serversocket.accept()
+            try:
+                serversocket.settimeout(60)
+                clientsocket, addr = serversocket.accept()
+            except serversocket.timeout:
+                continue
+
             log_info(f"Got a connection from {addr}")
             msg = clientsocket.recv(1024).decode("utf-8").split()
             log_info(f"Received {msg}")
