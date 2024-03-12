@@ -93,9 +93,10 @@ def status_server():
     log_info("Getting status")
     from monitor.capture import captured_frames
     from monitor.video import generated_videos
+    from monitor.policy import frames_count
 
     return (
-        f"captured_frames: {captured_frames} generated_videos: {len(generated_videos)}"
+        f"captured_frames: {captured_frames}/{frames_count} generated_videos: {len(generated_videos)}"
     )
 
 
@@ -109,12 +110,6 @@ def start_server():
 
     # force to release the port
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-    # set keep alive
-    serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-    serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 1)
-    serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 1)
-    serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 5)
 
     # bind to the port
     serversocket.bind((host, port))

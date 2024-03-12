@@ -44,7 +44,7 @@ def server(*args):
     video_path_for_debug = "" if len(args) == 0 else args[0]
     while not should_stop():
         try:
-            policy(video_path_for_debug)
+            policy(video_path_for_debug=video_path_for_debug)
         except Exception as e:
             log_error(e)
             # backtrace

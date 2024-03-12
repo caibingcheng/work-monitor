@@ -4,10 +4,21 @@ from monitor.capture import capture
 from monitor.video import generate_video, all_frames
 from monitor.config import config
 
-
-def easy_policy(video_path_for_debug):
+frames_count = len(all_frames())
+def easy_policy(**kwargs):
     easy_config = config["easy_policy"]
-    if len(all_frames()) >= easy_config["frames_per_video"]:
+    frames_per_video = easy_config["frames_per_video"]
+    frames_interval = easy_config["frames_interval"]
+
+    global frames_count
+    if frames_count >= frames_per_video:
         generate_video()
-    capture(video_path_for_debug)
-    time.sleep(easy_config["frames_interval"])
+        frames_count = 0
+
+    # update the actual frames count, but not frequently
+    if frames_count == (frames_per_video // 2):
+        frames_count = len(all_frames())
+
+    capture(kwargs.get("video_path_for_debug", ""))
+    frames_count += 1
+    time.sleep(frames_interval)
