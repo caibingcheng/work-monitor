@@ -14,6 +14,7 @@ class Config(object):
         "quality": 75,
         "frames_save": False,
         "generate_time": "23:00-00:00,00:00-06:00",
+        "iterations": 10,
         "policy": "easy_policy",
         "easy_policy": {"frames_interval": 10, "frames_per_video": 1000},
         "server": {
