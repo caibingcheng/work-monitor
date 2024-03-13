@@ -124,7 +124,7 @@ def start_server():
             try:
                 serversocket.settimeout(60)
                 clientsocket, addr = serversocket.accept()
-            except serversocket.timeout:
+            except socket.timeout:
                 continue
 
             log_info(f"Got a connection from {addr}")
