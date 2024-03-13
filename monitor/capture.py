@@ -11,9 +11,9 @@ class Capture(object):
     captured_frames_ = 0
     max_retry_ = 10
 
-    @property
-    def captured_frames(self):
-        return self.captured_frames_
+    @staticmethod
+    def captured_frames():
+        return Capture.captured_frames_
 
     def __init__(self, video_path_for_debug="", config=None):
         self.config_ = config
@@ -29,7 +29,7 @@ class Capture(object):
         self.config_ = config
 
     def capture(self):
-        max_retry = self.max_retry_
+        max_retry = Capture.max_retry_
 
         while True:
             # no file specified, use camera
@@ -75,7 +75,7 @@ class Capture(object):
                 frame,
                 [int(cv2.IMWRITE_JPEG_QUALITY), self.config_["quality"]],
             )
-            self.captured_frames_ += 1
+            Capture.captured_frames_ += 1
 
             if self.live_:
                 self.cap_.release()

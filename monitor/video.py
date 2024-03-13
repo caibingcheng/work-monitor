@@ -10,17 +10,20 @@ class Video(object):
     video_in_progress_ = False
     generated_videos_ = []
 
+    @staticmethod
+    def generated_videos():
+        return Video.generated_videos_
+
     def __init__(self, config=None):
         self.config_ = config
 
     def update_config(self, config):
         self.config_ = config
 
-    @property
     def all_frames(self) -> list:
         frames_dir = self.config_["frames_dir"]
         # when generating video, capture will still run, so do not check frames dir
-        if self.video_in_progress_:
+        if Video.video_in_progress_:
             return []
 
         target_frames_suffix = {".jpeg", ".jpg", ".png"}
@@ -32,8 +35,7 @@ class Video(object):
 
     def generate_video(self):
         # only one video can be generated at a time
-        global video_in_progress_
-        if video_in_progress_:
+        if Video.video_in_progress_:
             return
 
         Logging.info("Generating video")
@@ -42,7 +44,7 @@ class Video(object):
         if not frames:
             return
 
-        video_in_progress_ = True
+        Video.video_in_progress_ = True
         import threading
 
         threading.Thread(
@@ -60,7 +62,7 @@ class Video(object):
         frames = []
         first_frame_date = None
         last_frame_date = None
-        sorted_frame_paths = sorted(self.all_frames)
+        sorted_frame_paths = sorted(self.all_frames())
         for frame_path in sorted_frame_paths:
             frame = str(frame_path)
             frames.append(frame)
@@ -92,7 +94,6 @@ class Video(object):
         video.release()
         Logging.info(f"Video generated {output_path}")
 
-        self.generated_videos_.append(frames_date_range)
+        Video.generated_videos_.append(frames_date_range)
 
-        global video_in_progress_
-        video_in_progress_ = False
+        Video.video_in_progress_ = False

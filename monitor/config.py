@@ -22,42 +22,49 @@ class Config(object):
     }
     config_ = None
 
-    @property
-    def config(self):
-        return self.config_
+    @staticmethod
+    def get():
+        return Config.config_.copy()
 
-    def __init__(self) -> None:
-        if self.config_ is not None:
+    @staticmethod
+    def set(value):
+        Config.config_ = value
+
+    @staticmethod
+    def init() -> None:
+        if Config.config_ is not None:
             return
 
-        self.config_ = self.raw_config_
+        Config.config_ = Config.raw_config_.copy()
         try:
-            self.config_ = self.initialize_config(self.config_)
-            self.verify_config(self.config_)
+            Config.config_ = Config.initialize_config(Config.config_)
+            Config.verify_config(Config.config_)
         except Exception as e:
             print(e)
             choise = input("Reset config? (y/n)")
             if choise == "y":
                 print("Resetting config")
-                self.config_ = self.update_better_config(self.config_, self.raw_config_)
+                Config.config_ = Config.update_better_config(
+                    Config.config_, Config.raw_config_
+                )
                 print("Raw config: ")
-                print(json.dumps(self.raw_config_, indent=4))
+                print(json.dumps(Config.raw_config_, indent=4))
                 print("Current config: ")
-                print(json.dumps(self.config_, indent=4))
-                self.config_ = self.initialize_config(self.config_, force=True)
+                print(json.dumps(Config.config_, indent=4))
+                Config.config_ = Config.initialize_config(Config.config_, force=True)
             else:
                 print("Using raw config")
-                self.config_ = self.raw_config_
-        self.config_ = self.preprocess_config(self.config_)
-        self.verify_config(self.config_)
+                Config.config_ = Config.raw_config_
+        Config.config_ = Config.preprocess_config(Config.config_)
+        Config.verify_config(Config.config_)
 
     @staticmethod
-    def update_config(self, config, other_config):
+    def update_config(config, other_config):
         config.update(other_config)
         return config
 
     @staticmethod
-    def parse_time_range(self, config, key):
+    def parse_time_range(config, key):
         pairs = config[key].split(",")
         result = []
         for pair in pairs:
@@ -68,7 +75,7 @@ class Config(object):
         return result
 
     @staticmethod
-    def preprocess_config(self, config):
+    def preprocess_config(config):
         def replace_env_var(config):
             for key, value in config.items():
                 if isinstance(value, str):
@@ -109,7 +116,7 @@ class Config(object):
         return config
 
     @staticmethod
-    def stringify_config(self, config):
+    def stringify_config(config):
         def stringify(config):
             for key, value in config.items():
                 if isinstance(value, pathlib.Path):
@@ -121,17 +128,17 @@ class Config(object):
         return config
 
     @staticmethod
-    def initialize_config(self, config, force=False):
-        self.preprocess_config(config)
+    def initialize_config(config, force=False):
+        Config.preprocess_config(config)
         config_path = config["config_dir"] / "config.json"
         if not config_path.exists() or force:
             config_path.parent.mkdir(parents=True, exist_ok=True)
-            json.dump(self.stringify_config(config), open(config_path, "w"), indent=4)
+            json.dump(Config.stringify_config(config), open(config_path, "w"), indent=4)
         config = json.load(open(config_path))
         return config
 
     @staticmethod
-    def verify_config(self, config):
+    def verify_config(config):
         raw_config_keys = set()
         config_keys = set()
 
@@ -141,7 +148,7 @@ class Config(object):
                 if isinstance(value, dict):
                     append_sub_keys(keys, value, prefix=f"{prefix}{key}_")
 
-        append_sub_keys(raw_config_keys, self.raw_config_)
+        append_sub_keys(raw_config_keys, Config.raw_config_)
         append_sub_keys(config_keys, config)
 
         if raw_config_keys != config_keys:
@@ -149,7 +156,7 @@ class Config(object):
             raise Exception("Config keys not match", not_match)
 
     @staticmethod
-    def update_better_config(self, config, raw_config):
+    def update_better_config(config, raw_config):
         def update_better_config_helper(config, raw_config):
             for key, value in config.items():
                 if key not in raw_config:

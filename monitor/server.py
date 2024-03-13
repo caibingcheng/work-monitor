@@ -6,45 +6,52 @@ import pathlib
 import json
 import threading
 
-from monitor.config import config, stringify_config, initialize_config, update_config
-from monitor.log import log_info, log_error
-
-global server_command
-server_command = {}
+from monitor.config import Config
+from monitor.log import Logging
 
 
-def add_server_command(name, help=""):
-    def decorator(func):
-        global server_command
-        server_command[name] = {
-            "command": func,
-            "help": help,
-        }
-        return func
+class ServerCommand(object):
+    server_command_ = {}
 
-    return decorator
+    @staticmethod
+    def get():
+        return ServerCommand.server_command_
+
+    @staticmethod
+    def add_server_command(name, help=""):
+        def decorator(func):
+            ServerCommand.server_command_[name] = {
+                "command": func,
+                "help": help,
+            }
+            return func
+
+        return decorator
+
+
+class ServerParams(object):
+    should_stop = False
 
 
 def get_config_string(config):
-    config_copy = config.copy()
-    config_copy = stringify_config(config_copy)
-    config_str = json.dumps(config_copy, indent=4)
-    log_info(f"Sending config {config_str}")
+    config = Config.stringify_config(config)
+    config_str = json.dumps(config, indent=4)
+    Logging.info(f"Sending config {config_str}")
     return config_str
 
 
-@add_server_command("get_config", "Get config")
+@ServerCommand.add_server_command("get_config", "Get config")
 def get_config_server():
-    log_info("Sending config")
-    return get_config_string(config)
+    Logging.info("Sending config")
+    return get_config_string(Config.get())
 
 
-@add_server_command("set_config", "Set config [key1] [key2] ... [value]")
+@ServerCommand.add_server_command("set_config", "Set config [key1] [key2] ... [value]")
 def set_config_server(*args):
-    log_info("Setting config")
+    Logging.info("Setting config")
     if len(args) < 2:
         raise Exception("Not enough arguments")
-    current = config.copy()
+    current = Config.get()
     current_header = current
     keys = args[:-1]
     value = args[-1]
@@ -53,32 +60,27 @@ def set_config_server(*args):
             raise Exception(f"Key {key} not found")
         current = current[key]
     current[keys[-1]] = value
-    current_header = initialize_config(current_header, force=True)
+    current_header = Config.initialize_config(current_header, force=True)
     config_str = json.dumps(current_header, indent=4)
-    log_info(f"Sending config {config_str}")
-    update_config(config, current_header)
+    Logging.info(f"Sending config {config_str}")
+    Config.set(Config.update_config(Config.get(), current_header))
     return config_str
 
 
-_should_stop = False
-
-
-@add_server_command("stop", "Stop server")
+@ServerCommand.add_server_command("stop", "Stop server")
 def stop_server():
-    log_info("Stopping")
-    global _should_stop
-    _should_stop = True
+    Logging.info("Stopping")
+    ServerParams.should_stop = True
     exit(0)
 
 
 def should_stop():
-    global _should_stop
-    return _should_stop
+    return ServerParams.should_stop
 
 
-@add_server_command("restart", "Restart server")
+@ServerCommand.add_server_command("restart", "Restart server")
 def restart_server():
-    log_info("Restarting")
+    Logging.info("Restarting")
     import sys
 
     this_command = " ".join(["python3"] + sys.argv)
@@ -88,16 +90,14 @@ def restart_server():
     os.system(f"kill {this_pid}")
 
 
-@add_server_command("status", "Get status")
+@ServerCommand.add_server_command("status", "Get status")
 def status_server():
-    log_info("Getting status")
-    from monitor.capture import captured_frames
-    from monitor.video import generated_videos
-    from monitor.policy import frames_count
+    Logging.info("Getting status")
+    from monitor.capture import Capture
+    from monitor.video import Video
+    from monitor.policy import PolicyParams
 
-    return (
-        f"captured_frames: {captured_frames}/{frames_count} generated_videos: {len(generated_videos)}"
-    )
+    return f"captured_frames: {Capture.captured_frames()}/{PolicyParams.frames_count} generated_videos: {len(Video.generated_videos())}"
 
 
 def start_server():
@@ -106,7 +106,7 @@ def start_server():
 
     # get local machine name
     host = socket.gethostname()
-    port = config["server"]["port"]
+    port = Config.get()["server"]["port"]
 
     # force to release the port
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -118,7 +118,8 @@ def start_server():
     serversocket.listen(5)
 
     def server_loop():
-        log_info("Server started")
+        Logging.info("Server started")
+        server_command = ServerCommand.get()
         while True:
             # establish a connection
             try:
@@ -127,14 +128,14 @@ def start_server():
             except socket.timeout:
                 continue
 
-            log_info(f"Got a connection from {addr}")
+            Logging.info(f"Got a connection from {addr}")
             msg = clientsocket.recv(1024).decode("utf-8").split()
-            log_info(f"Received {msg}")
+            Logging.info(f"Received {msg}")
             argument = msg[1:]
             msg = msg[0]
             try:
                 if msg not in server_command:
-                    log_error(f"Unknown command {msg}")
+                    Logging.error(f"Unknown command {msg}")
                     clientsocket.send("failed".encode("utf-8"))
                 else:
                     response = server_command[msg]["command"](*argument)
@@ -143,8 +144,8 @@ def start_server():
                     clientsocket.send(response)
             except Exception as e:
                 # show backtrace
-                log_error("Server failed", e)
-                log_error("Config", config)
+                Logging.error("Server failed", e)
+                Logging.error("Config", Config.get())
 
                 clientsocket.send("failed".encode("utf-8"))
             finally:
@@ -159,13 +160,13 @@ def send_msg_to_server(msg):
 
     # get local machine name
     host = socket.gethostname()
-    port = config["server"]["port"]
+    port = Config.get()["server"]["port"]
 
     try:
         # connection to hostname on the port.
         client.connect((host, port))
     except Exception as e:
-        log_error("Client failed to connect to server", e)
+        Logging.error("Client failed to connect to server", e)
         exit(1)
 
     # Receive no more than 1024 bytes
