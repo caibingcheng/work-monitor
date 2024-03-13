@@ -2,95 +2,98 @@ import cv2
 import time
 import pathlib
 
-from monitor.config import config
-from monitor.log import log_info
-
-# when generating video, capture will still run
-video_in_progress = False
+from monitor.log import Logging
 
 
-def all_frames(frames_dir=config["frames_dir"]) -> list:
-    # when generating video, capture will still run, so do not check frames dir
-    global video_in_progress
-    if video_in_progress:
-        return []
+class Video(object):
+    # when generating video, capture will still run
+    video_in_progress_ = False
+    generated_videos_ = []
 
-    target_frames_suffix = {".jpeg", ".jpg", ".png"}
-    frames = []
-    for frame_path in pathlib.Path(frames_dir).glob("*"):
-        if frame_path.suffix in target_frames_suffix:
-            frames.append(frame_path)
-    return frames
+    @staticmethod
+    def generated_videos():
+        return Video.generated_videos_
 
+    def __init__(self, config=None):
+        self.config_ = config
 
-def load_frames(frames_dir):
-    frames = []
-    first_frame_date = None
-    last_frame_date = None
-    sorted_frame_paths = sorted(all_frames(frames_dir))
-    for frame_path in sorted_frame_paths:
-        frame = str(frame_path)
-        frames.append(frame)
-        if not first_frame_date:
-            first_frame_date = frame_path.stem
-        last_frame_date = frame_path.stem
-    frames_date_range = f"{first_frame_date}-{last_frame_date}"
-    return frames, frames_date_range
+    def update_config(self, config):
+        self.config_ = config
 
+    def all_frames(self) -> list:
+        frames_dir = self.config_["frames_dir"]
+        # when generating video, capture will still run, so do not check frames dir
+        if Video.video_in_progress_:
+            return []
 
-global generated_videos
-generated_videos = []
+        target_frames_suffix = {".jpeg", ".jpg", ".png"}
+        frames = []
+        for frame_path in pathlib.Path(frames_dir).glob("*"):
+            if frame_path.suffix in target_frames_suffix:
+                frames.append(frame_path)
+        return frames
 
+    def generate_video(self):
+        # only one video can be generated at a time
+        if Video.video_in_progress_:
+            return
 
-def generate_video_from_frames(frames, frames_date_range, video_dir, fps):
-    base_frame = cv2.imread(frames[0])
-    height, width, _ = base_frame.shape
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    output_path = pathlib.Path(video_dir) / f"{frames_date_range}.mp4"
-    if output_path.exists():
-        log_info(f"Removing existing video {output_path}")
-        output_path.unlink()
-    log_info(f"Generating video {output_path}")
-    video = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
+        Logging.info("Generating video")
+        frames, frames_date_range = self.load_frames_()
+        Logging.info(f"Total frames: {len(frames)}, date range: {frames_date_range}")
+        if not frames:
+            return
 
-    skip_write = False
-    frame_save = config["frames_save"]
-    for frame_path in frames:
-        frame = cv2.imread(frame_path)
-        if not frame_save:
-            pathlib.Path(frame_path).unlink()
-        if not skip_write:
-            video.write(frame)
-    video.release()
-    log_info(f"Video generated {output_path}")
+        Video.video_in_progress_ = True
+        import threading
 
-    global generated_videos
-    generated_videos.append(frames_date_range)
+        threading.Thread(
+            target=self.generate_video_from_frames_,
+            args=(
+                frames,
+                frames_date_range,
+                self.config_["video_dir"],
+                self.config_["fps"],
+            ),
+        ).start()
 
-    global video_in_progress
-    video_in_progress = False
+    def load_frames_(self):
+        frames_dir = self.config_["frames_dir"]
+        frames = []
+        first_frame_date = None
+        last_frame_date = None
+        sorted_frame_paths = sorted(self.all_frames())
+        for frame_path in sorted_frame_paths:
+            frame = str(frame_path)
+            frames.append(frame)
+            if not first_frame_date:
+                first_frame_date = frame_path.stem
+            last_frame_date = frame_path.stem
+        frames_date_range = f"{first_frame_date}-{last_frame_date}"
+        return frames, frames_date_range
 
+    def generate_video_from_frames_(self, frames, frames_date_range, video_dir, fps):
+        base_frame = cv2.imread(frames[0])
+        height, width, _ = base_frame.shape
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        output_path = pathlib.Path(video_dir) / f"{frames_date_range}.mp4"
+        if output_path.exists():
+            Logging.info(f"Removing existing video {output_path}")
+            output_path.unlink()
+        Logging.info(f"Generating video {output_path}")
+        video = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
-def generate_video():
-    # only one video can be generated at a time
-    global video_in_progress
-    if video_in_progress:
-        return
+        skip_write = False
+        frame_save = self.config_["frames_save"]
+        for frame_path in frames:
+            frame = cv2.imread(frame_path)
+            if not frame_save:
+                pathlib.Path(frame_path).unlink()
+            if not skip_write:
+                video.write(frame)
+        video.release()
+        Logging.info(f"Video generated {output_path}")
 
-    log_info("Generating video")
-    frames, frames_date_range = load_frames(config["frames_dir"])
-    log_info(f"Total frames: {len(frames)}, date range: {frames_date_range}")
-    if not frames:
-        return
+        Video.generated_videos_.append(frames_date_range)
 
-    video_in_progress = True
-    import threading
-
-    threading.Thread(
-        target=generate_video_from_frames,
-        args=(frames, frames_date_range, config["video_dir"], config["fps"]),
-    ).start()
-
-
-if __name__ == "__main__":
-    generate_video()
+        Video.video_in_progress_ = False
