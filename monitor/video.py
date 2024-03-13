@@ -36,6 +36,7 @@ class Video(object):
     def generate_video(self):
         # only one video can be generated at a time
         if Video.video_in_progress_:
+            Logging.debug("Video in progress, skip generating video")
             return
 
         Logging.info("Generating video")
@@ -95,5 +96,29 @@ class Video(object):
         Logging.info(f"Video generated {output_path}")
 
         Video.generated_videos_.append(frames_date_range)
+        self.remove_outdated_videos_(video_dir)
 
         Video.video_in_progress_ = False
+
+    def remove_outdated_videos_(self, video_dir):
+        video_paths = sorted(pathlib.Path(video_dir).glob("*.mp4"))
+        filtered_video_paths = []
+
+        import re
+
+        # the pattern is like "20240107153612s239-20240107153637s319.mp4"
+        for video_path in video_paths:
+            match = re.search(r"(\d+s\d+)-(\d+s\d+)", video_path.stem)
+            if not match:
+                continue
+            start, end = video_path.stem.split("-")
+            if len(start) != 18 or len(end) != 18:
+                continue
+            filtered_video_paths.append(video_path)
+
+        Logging.debug(f"Found {len(filtered_video_paths)} videos")
+
+        sorted_video_paths = sorted(filtered_video_paths)
+        for video_path in sorted_video_paths[: -self.config_["iterations"]]:
+            Logging.info(f"Removing outdated video {video_path}")
+            video_path.unlink()
