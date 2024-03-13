@@ -1,13 +1,19 @@
-from monitor.log import log_info, log_error
-from monitor.config import config
+from monitor.log import Logging
+from monitor.config import Config
 from monitor.policy import *
-from monitor.server import server_command
 
 global command
 command = {}
 
 
 def add_command(name, help="", server=False):
+    global command
+    if not command:
+        from monitor.server import server_command
+
+        for name, value in server_command.items():
+            add_command(name, value["help"], server=True)(client_send_msg_to_server)
+
     def decorator(func):
         global command
         command[name] = {
@@ -30,11 +36,17 @@ Commands:
     print(help_str)
 
 
+@add_command("development", "Development mode, show more logs")
+def development(*args):
+    Logging.update_log_level("DEBUG")
+    server(*args)
+
+
 @add_command("server", "Start server [video_path], default video_path is empty")
 def server(*args):
-    log_info("Starting")
-    policy = config["policy"]
-    log_info(f"Using policy {policy}")
+    Logging.info("Starting")
+    policy = Config.config["policy"]
+    Logging.info(f"Using policy {policy}")
     # str to function
     policy = globals()[policy]
 
@@ -46,13 +58,13 @@ def server(*args):
         try:
             policy(video_path_for_debug=video_path_for_debug)
         except Exception as e:
-            log_error(e)
+            Logging.error(e)
             # backtrace
             import traceback
 
             traceback.print_exc()
             client_send_msg_to_server("stop")
-    log_info("Stopped")
+    Logging.info("Stopped")
     exit(0)
 
 
@@ -67,7 +79,3 @@ def client_send_msg_to_server(msg, *args):
     write_log("[INFO ]", "Client received", response)
     if response:
         print(response)
-
-
-for name, value in server_command.items():
-    add_command(name, value["help"], server=True)(client_send_msg_to_server)
