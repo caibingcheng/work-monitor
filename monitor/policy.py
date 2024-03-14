@@ -32,6 +32,7 @@ def is_in_time_range(time_range_str):
 
 class PolicyParams(object):
     frames_count = 0
+    next_timestamp = time.time()
 
 
 def easy_policy(config, capture, video):
@@ -39,11 +40,19 @@ def easy_policy(config, capture, video):
         PolicyParams.frames_count = len(video.all_frames())
         Logging.debug(f"Initial frames count: {PolicyParams.frames_count}")
 
+    current_timestamp = time.time()
+    if current_timestamp < PolicyParams.next_timestamp:
+        return
+
     easy_config = config["easy_policy"]
     frames_per_video = easy_config["frames_per_video"]
     frames_interval = easy_config["frames_interval"]
 
-    Logging.debug(f"Frames count: {PolicyParams.frames_count}, frames per video: {frames_per_video}, frames interval: {frames_interval}")
+    PolicyParams.next_timestamp = current_timestamp + frames_interval
+
+    Logging.debug(
+        f"Frames count: {PolicyParams.frames_count}, frames per video: {frames_per_video}, frames interval: {frames_interval}, next timestamp: {PolicyParams.next_timestamp}"
+    )
     if PolicyParams.frames_count >= frames_per_video and is_in_time_range(
         config["generate_time"]
     ):
@@ -59,4 +68,3 @@ def easy_policy(config, capture, video):
 
     capture.capture()
     PolicyParams.frames_count += 1
-    time.sleep(frames_interval)
