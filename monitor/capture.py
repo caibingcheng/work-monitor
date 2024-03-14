@@ -36,7 +36,7 @@ class Capture(object):
 
         while True:
             # no file specified, use camera
-            if self.cap_ is None:
+            if self.live_:
                 self.cap_ = cv2.VideoCapture(self.config_["camera_id"], cv2.CAP_V4L2)
             if not self.cap_.isOpened():
                 Logging.error("Capture not valid")
