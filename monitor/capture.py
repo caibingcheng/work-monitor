@@ -20,7 +20,10 @@ class Capture(object):
         self.video_path_for_debug_ = video_path_for_debug
         self.cap_ = None
         self.live_ = True
-        if pathlib.Path(self.video_path_for_debug_).exists():
+        if (
+            self.video_path_for_debug_ != ""
+            and pathlib.Path(self.video_path_for_debug_).exists()
+        ):
             Logging.info(f"Load frames from {self.video_path_for_debug_}")
             self.cap_ = cv2.VideoCapture(self.video_path_for_debug_)
             self.live_ = False
