@@ -44,8 +44,8 @@ class Logging(object):
             Logging.get_latest_log_file_()
 
         # caller_name = sys._getframe(2).f_code.co_name
-        caller_file = sys._getframe(2).f_code.co_filename
-        caller_line = sys._getframe(2).f_lineno
+        caller_file = sys._getframe(3).f_code.co_filename
+        caller_line = sys._getframe(3).f_lineno
         current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         caller_file = pathlib.Path(caller_file).name
         caller_info = f"{caller_file}:{caller_line}"

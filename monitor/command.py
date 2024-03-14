@@ -58,12 +58,22 @@ def help(command_name):
     help_str = """Usage: python3 -m monitor <command> [arguments]
 Commands:
 """
-    for name, value in Command.get().items():
-        help_str += f"    {name}: {value['help']}\n"
+    keys = list(Command.get().keys())
+    keys.sort()
+
+    # keep 'server' command at first, and 'development' command at second, and 'help' command at last
+    keys.remove("server")
+    keys.remove("development")
+    keys.remove("help")
+    keys = ["server", "development"] + keys + ["help"]
+
+    for name in keys:
+        help_str += f"    {name}: {Command.get()[name]['help']}\n"
+
     print(help_str)
 
 
-@Command.add_command("development", "Development mode, show more logs")
+@Command.add_command("development", "Start server at dev mode, show more logs")
 def development(command_name, *args):
     Logging.update_log_level("DEBUG")
     Logging.debug(f"Command[{command_name}]")
@@ -84,14 +94,30 @@ def server(command_name, *args):
     video = Video(config)
     capture = Capture(config=config, video_path_for_debug=video_path_for_debug)
 
-    from monitor.server import start_server, should_stop
+    from monitor.server import (
+        start_server,
+        should_stop,
+        should_pause,
+        insert_tasks,
+        clear_insert_tasks,
+    )
 
     start_server()
     while not should_stop():
+        time.sleep(0.1)
         try:
             config = Config.get()
             video.update_config(config)
             capture.update_config(config)
+
+            for task in insert_tasks():
+                task(config=config, capture=capture, video=video)
+            clear_insert_tasks()
+
+            # set pause, but still process insert tasks
+            while should_pause():
+                time.sleep(1)
+                continue
 
             policy(config, capture, video)
         except Exception as e:

@@ -31,6 +31,8 @@ class ServerCommand(object):
 
 class ServerParams(object):
     should_stop = False
+    should_pause = False
+    insert_tasks = []
 
 
 def get_config_string(config):
@@ -76,6 +78,45 @@ def stop_server():
 
 def should_stop():
     return ServerParams.should_stop
+
+
+@ServerCommand.add_server_command(
+    "pause", "Pause server, stop capturing and generating videos"
+)
+def pause_server():
+    Logging.info("Pausing")
+    ServerParams.should_pause = True
+    return "Done"
+
+
+@ServerCommand.add_server_command("resume", "Resume server from pause")
+def resume_server():
+    Logging.info("Resuming")
+    ServerParams.should_pause = False
+    return "Done"
+
+
+def should_pause():
+    return ServerParams.should_pause
+
+
+@ServerCommand.add_server_command("generate_video", "Generate video immediately")
+def generate_video_server():
+    Logging.info("Generating video immediately")
+
+    def generate_video(*args, **kwargs):
+        kwargs["video"].generate_video()
+
+    ServerParams.insert_tasks.append(generate_video)
+    return "Done"
+
+
+def insert_tasks():
+    return ServerParams.insert_tasks
+
+
+def clear_insert_tasks():
+    ServerParams.insert_tasks = []
 
 
 @ServerCommand.add_server_command("restart", "Restart server")
