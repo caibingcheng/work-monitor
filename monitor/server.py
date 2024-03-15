@@ -59,7 +59,7 @@ def set_config_server(*args):
     value = args[-1]
     for key in keys[:-1]:
         if key not in current or not isinstance(current[key], dict):
-            raise Exception(f"Key {key} not found")
+            raise ValueError(f"Key {key} not found")
         current = current[key]
     current[keys[-1]] = value
     current_header = Config.initialize_config(current_header, force=True)
@@ -188,7 +188,7 @@ def start_server():
                 Logging.error("Server failed", e)
                 Logging.error("Config", Config.get())
 
-                clientsocket.send("failed".encode("utf-8"))
+                clientsocket.send(f"Failed. {e}".encode("utf-8"))
             finally:
                 clientsocket.close()
 

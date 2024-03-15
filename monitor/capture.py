@@ -5,6 +5,7 @@ import time
 import pathlib
 
 from monitor.log import Logging
+from monitor.config import platform
 
 
 class Capture(object):
@@ -17,32 +18,51 @@ class Capture(object):
 
     def __init__(self, video_path_for_debug="", config=None):
         self.config_ = config
-        self.video_path_for_debug_ = video_path_for_debug
+        if self.config_ is None:
+            raise ValueError("config is None")
+
+        self.live_ = False
         self.cap_ = None
-        self.live_ = True
-        if (
-            self.video_path_for_debug_ != ""
-            and pathlib.Path(self.video_path_for_debug_).exists()
-        ):
-            Logging.info(f"Load frames from {self.video_path_for_debug_}")
-            self.cap_ = cv2.VideoCapture(self.video_path_for_debug_)
-            self.live_ = False
+        self.one_shot_ = False
+        if video_path_for_debug != "" and pathlib.Path(video_path_for_debug).exists():
+            Logging.info(f"Load frames from {video_path_for_debug}")
+            self.cap_ = cv2.VideoCapture(video_path_for_debug)
+        else:
+            # no file specified, use camera
+            self.live_ = True
+            self.prefered_api_ = cv2.CAP_V4L2
+            if platform == "nt":
+                self.prefered_api_ = cv2.CAP_DSHOW
 
     def update_config(self, config):
         self.config_ = config
+
+    def get_capture(self):
+        self.one_shot_ = self.config_["capture_mode"] == "one_shot"
+
+        if self.live_ and self.cap_ is None:
+            self.cap_ = cv2.VideoCapture(self.config_["camera_id"], self.prefered_api_)
+
+        if not self.cap_.isOpened():
+            Logging.error("Capture not valid")
+            raise Exception(
+                "Capture not valid, camera id: " + str(self.config_["camera_id"]),
+                ", please verify the config: ",
+                str(self.config_["config_dir"] / "config.json"),
+            )
+
+        return self.cap_.read()
+
+    def release_capture(self):
+        if self.live_ and self.one_shot_:
+            self.cap_.release()
+            self.cap_ = None
 
     def capture(self):
         max_retry = Capture.max_retry_
 
         while True:
-            # no file specified, use camera
-            if self.live_:
-                self.cap_ = cv2.VideoCapture(self.config_["camera_id"], cv2.CAP_V4L2)
-            if not self.cap_.isOpened():
-                Logging.error("Capture not valid")
-                raise Exception("Capture not valid")
-
-            ret, frame = self.cap_.read()
+            ret, frame = self.get_capture()
             if not ret:
                 time.sleep(1)
                 max_retry -= 1
@@ -80,6 +100,6 @@ class Capture(object):
             )
             Capture.captured_frames_ += 1
 
-            if self.live_:
-                self.cap_.release()
+            self.release_capture()
+
             break

@@ -3,6 +3,10 @@ import os
 import pathlib
 
 
+# platform has the values ['posix', 'nt', 'os2', 'ce', 'java', 'riscos']
+platform = os.name
+
+
 class Config(object):
     raw_config_ = {
         "camera_id": 0,
@@ -12,6 +16,7 @@ class Config(object):
         "log_dir": "$HOME/.work-monitor/log",
         "fps": 60,
         "quality": 75,
+        "capture_mode": "one_shot",  # one_shot, continuous
         "frames_save": False,
         "generate_time": "23:00-00:00,00:00-06:00",
         "iterations": 10,
@@ -80,7 +85,10 @@ class Config(object):
         def replace_env_var(config):
             for key, value in config.items():
                 if isinstance(value, str):
-                    config[key] = value.replace("$HOME", os.environ["HOME"])
+                    if platform == "nt":
+                        config[key] = value.replace("$HOME", os.environ["USERPROFILE"])
+                    else:
+                        config[key] = value.replace("$HOME", os.environ["HOME"])
                 elif isinstance(value, dict):
                     replace_env_var(value)
 
@@ -110,10 +118,19 @@ class Config(object):
             elif config[key] > max_value:
                 config[key] = max_value
 
+        def check_valid_values(config, key, valid_values):
+            if key not in config:
+                return
+            if config[key] not in valid_values:
+                raise ValueError(
+                    f"Invalid value for {key}: {config[key]}, valid values: {valid_values}"
+                )
+
         replace_env_var(config)
         replace_stringnumber_to_number(config)
         create_dir_if_not_exist(config)
         reset_value_range(config, "quality", 0, 100)
+        check_valid_values(config, "capture_mode", ["one_shot", "continuous"])
         return config
 
     @staticmethod
